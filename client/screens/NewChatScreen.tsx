@@ -37,7 +37,7 @@ export default function NewChatScreen() {
   });
 
   const filteredUsers = useMemo(() => {
-    if (!searchQuery.trim()) return users;
+    if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase().trim();
     return users.filter(
       (user) =>
@@ -143,16 +143,24 @@ export default function NewChatScreen() {
           ListEmptyComponent={
             searchQuery.trim() ? (
               <View style={styles.emptyState}>
-                <Feather name="search" size={64} color={colors.textSecondary} />
+                <Feather name="user-x" size={64} color={colors.textSecondary} />
                 <ThemedText style={[styles.emptyTitle, { color: colors.textSecondary }]}>
                   User tidak ditemukan
                 </ThemedText>
                 <ThemedText style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-                  Coba cari dengan username atau nama lain
+                  Pastikan username yang dimasukkan benar
                 </ThemedText>
               </View>
             ) : (
-              renderEmptyState()
+              <View style={styles.emptyState}>
+                <Feather name="user-plus" size={64} color={colors.textSecondary} />
+                <ThemedText style={[styles.emptyTitle, { color: colors.textSecondary }]}>
+                  Tambah User untuk Chat
+                </ThemedText>
+                <ThemedText style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+                  Masukkan username user yang ingin Anda ajak chat
+                </ThemedText>
+              </View>
             )
           }
         />
