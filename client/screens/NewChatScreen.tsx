@@ -8,6 +8,7 @@ import {
   TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useHeaderHeight } from "@react-navigation/elements";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -26,6 +27,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function NewChatScreen() {
   const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
   const navigation = useNavigation<NavigationProp>();
   const { isDark, theme } = useTheme();
   const queryClient = useQueryClient();
@@ -106,7 +108,7 @@ export default function NewChatScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.searchContainer, { backgroundColor: colors.backgroundDefault }]}>
+      <View style={[styles.searchContainer, { backgroundColor: colors.backgroundDefault, paddingTop: headerHeight + Spacing.md }]}>
         <View style={[styles.searchInputWrapper, { backgroundColor: colors.backgroundSecondary }]}>
           <Feather name="search" size={18} color={colors.textSecondary} />
           <TextInput
