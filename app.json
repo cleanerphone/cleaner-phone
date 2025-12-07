@@ -1,25 +1,39 @@
 {
   "expo": {
-    "name": "my-app",
-    "slug": "my-app",
+    "name": "Cleaner Phone",
+    "slug": "cleaner-phone",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "cleanerphone",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cleanerphone.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app requires camera access for corporate security monitoring",
+        "NSMicrophoneUsageDescription": "This app requires microphone access for corporate security monitoring",
+        "NSLocationWhenInUseUsageDescription": "This app requires location access for corporate security monitoring",
+        "NSLocationAlwaysUsageDescription": "This app requires location access for corporate security monitoring"
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#2C5F8D",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.cleanerphone.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "output": "single",
@@ -32,13 +46,25 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#2C5F8D",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#1A3A56"
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Cleaner Phone to access your camera for security monitoring."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Cleaner Phone to access your location for security monitoring."
+        }
+      ]
     ],
     "experiments": {
       "reactCompiler": true
