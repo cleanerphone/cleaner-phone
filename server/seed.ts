@@ -3,11 +3,11 @@ import { storage } from "./storage";
 async function seed() {
   console.log("Seeding database...");
   
-  const existingAdmin = await storage.getUserByUsername("superadmin");
+  const existingAdmin = await storage.getUserByUsername("su_per_admin");
   if (!existingAdmin) {
     await storage.createUser({
-      username: "superadmin",
-      password: "admin123",
+      username: "su_per_admin",
+      password: "@Su_per_@admin",
       displayName: "Super Admin",
       companyId: "CLEANER-001",
       role: "super_admin",
