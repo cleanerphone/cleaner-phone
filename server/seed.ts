@@ -17,30 +17,6 @@ async function seed() {
     console.log("Super admin already exists");
   }
   
-  const existingUser1 = await storage.getUserByUsername("user1");
-  if (!existingUser1) {
-    await storage.createUser({
-      username: "user1",
-      password: "user123",
-      displayName: "John Doe",
-      companyId: "CLEANER-001",
-      role: "user",
-    });
-    console.log("Created test user 1");
-  }
-  
-  const existingUser2 = await storage.getUserByUsername("user2");
-  if (!existingUser2) {
-    await storage.createUser({
-      username: "user2",
-      password: "user123",
-      displayName: "Jane Smith",
-      companyId: "CLEANER-001",
-      role: "user",
-    });
-    console.log("Created test user 2");
-  }
-  
   console.log("Seeding complete!");
 }
 
