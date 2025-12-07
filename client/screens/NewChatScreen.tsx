@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   StyleSheet,
   FlatList,
   Pressable,
   ActivityIndicator,
+  TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -26,13 +27,24 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export default function NewChatScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
-  const { isDark } = useTheme();
+  const { isDark, theme } = useTheme();
   const queryClient = useQueryClient();
   const colors = isDark ? Colors.dark : Colors.light;
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: users = [], isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
+
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return users;
+    const query = searchQuery.toLowerCase().trim();
+    return users.filter(
+      (user) =>
+        user.username.toLowerCase().includes(query) ||
+        user.displayName.toLowerCase().includes(query)
+    );
+  }, [users, searchQuery]);
 
   const createConversationMutation = useMutation({
     mutationFn: async (userId: string) => {
@@ -94,21 +106,55 @@ export default function NewChatScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <View style={[styles.searchContainer, { backgroundColor: colors.backgroundDefault }]}>
+        <View style={[styles.searchInputWrapper, { backgroundColor: colors.backgroundSecondary }]}>
+          <Feather name="search" size={18} color={colors.textSecondary} />
+          <TextInput
+            style={[styles.searchInput, { color: theme.text }]}
+            placeholder="Cari username atau nama..."
+            placeholderTextColor={colors.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 ? (
+            <Pressable onPress={() => setSearchQuery("")} hitSlop={8}>
+              <Feather name="x-circle" size={18} color={colors.textSecondary} />
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+
       {isLoading ? (
         <View style={styles.loading}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
-          data={users}
+          data={filteredUsers}
           keyExtractor={(item) => item.id}
           renderItem={renderUser}
           contentContainerStyle={[
             styles.listContent,
             { paddingBottom: insets.bottom + Spacing.xl },
-            users.length === 0 && styles.emptyListContent,
+            filteredUsers.length === 0 && styles.emptyListContent,
           ]}
-          ListEmptyComponent={renderEmptyState}
+          ListEmptyComponent={
+            searchQuery.trim() ? (
+              <View style={styles.emptyState}>
+                <Feather name="search" size={64} color={colors.textSecondary} />
+                <ThemedText style={[styles.emptyTitle, { color: colors.textSecondary }]}>
+                  User tidak ditemukan
+                </ThemedText>
+                <ThemedText style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+                  Coba cari dengan username atau nama lain
+                </ThemedText>
+              </View>
+            ) : (
+              renderEmptyState()
+            )
+          }
         />
       )}
     </ThemedView>
@@ -118,6 +164,23 @@ export default function NewChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  searchContainer: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  searchInputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    ...Typography.body,
+    paddingVertical: 0,
   },
   loading: {
     flex: 1,
