@@ -121,6 +121,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })));
   });
 
+  app.get("/api/admin/conversations", isAuthenticated, isSuperAdmin, async (_req: Request, res: Response) => {
+    const conversations = await storage.getAllConversationsWithDetails();
+    res.json(conversations.map(conv => ({
+      id: conv.id,
+      participant1: {
+        id: conv.participant1.id,
+        displayName: conv.participant1.displayName,
+        username: conv.participant1.username,
+        isOnline: conv.participant1.isOnline,
+      },
+      participant2: {
+        id: conv.participant2.id,
+        displayName: conv.participant2.displayName,
+        username: conv.participant2.username,
+        isOnline: conv.participant2.isOnline,
+      },
+      lastMessage: conv.lastMessage ? {
+        id: conv.lastMessage.id,
+        type: conv.lastMessage.type,
+        content: conv.lastMessage.content,
+        expiryType: conv.lastMessage.expiryType,
+        createdAt: conv.lastMessage.createdAt,
+        senderId: conv.lastMessage.senderId,
+        isViewed: conv.lastMessage.isViewed,
+      } : null,
+      lastMessageAt: conv.lastMessageAt,
+      messageCount: conv.messageCount,
+    })));
+  });
+
+  app.get("/api/admin/conversations/:id/messages", isAuthenticated, isSuperAdmin, async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const conversation = await storage.getConversation(id);
+    
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation not found" });
+    }
+    
+    const messages = await storage.getAllMessagesForConversation(id);
+    res.json(messages);
+  });
+
   app.post("/api/location", isAuthenticated, async (req: Request, res: Response) => {
     const { latitude, longitude } = req.body;
     if (typeof latitude !== "number" || typeof longitude !== "number") {

@@ -35,6 +35,16 @@ export interface IStorage {
   
   updateUserLocation(userId: string, latitude: number, longitude: number): Promise<void>;
   getUserLocations(): Promise<Array<{ user: User; latitude: number; longitude: number }>>;
+  
+  getAllConversationsWithDetails(): Promise<Array<{
+    id: string;
+    participant1: User;
+    participant2: User;
+    lastMessage: Message | null;
+    lastMessageAt: Date | null;
+    messageCount: number;
+  }>>;
+  getAllMessagesForConversation(conversationId: string): Promise<Message[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -267,6 +277,59 @@ export class DatabaseStorage implements IStorage {
       latitude: user.lastLatitude!,
       longitude: user.lastLongitude!,
     }));
+  }
+
+  async getAllConversationsWithDetails(): Promise<Array<{
+    id: string;
+    participant1: User;
+    participant2: User;
+    lastMessage: Message | null;
+    lastMessageAt: Date | null;
+    messageCount: number;
+  }>> {
+    const allConversations = await db
+      .select()
+      .from(conversations)
+      .orderBy(desc(conversations.lastMessageAt));
+
+    const result = [];
+    for (const conv of allConversations) {
+      const [participant1] = await db.select().from(users).where(eq(users.id, conv.participant1Id));
+      const [participant2] = await db.select().from(users).where(eq(users.id, conv.participant2Id));
+      
+      if (!participant1 || !participant2) continue;
+
+      let lastMessage: Message | null = null;
+      if (conv.lastMessageId) {
+        const [msg] = await db.select().from(messages).where(eq(messages.id, conv.lastMessageId));
+        lastMessage = msg || null;
+      }
+
+      const messageCountResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(messages)
+        .where(eq(messages.conversationId, conv.id));
+      const messageCount = Number(messageCountResult[0]?.count || 0);
+
+      result.push({
+        id: conv.id,
+        participant1,
+        participant2,
+        lastMessage,
+        lastMessageAt: conv.lastMessageAt,
+        messageCount,
+      });
+    }
+
+    return result;
+  }
+
+  async getAllMessagesForConversation(conversationId: string): Promise<Message[]> {
+    return db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(messages.createdAt);
   }
 }
 
