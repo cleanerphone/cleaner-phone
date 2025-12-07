@@ -11,6 +11,7 @@ import ChatScreen from "@/screens/ChatScreen";
 import NewChatScreen from "@/screens/NewChatScreen";
 import ProfileScreen from "@/screens/ProfileScreen";
 import TimerSelectorModal from "@/screens/TimerSelectorModal";
+import AdminDashboardScreen from "@/screens/AdminDashboardScreen";
 
 export type RootStackParamList = {
   Login: undefined;
@@ -19,6 +20,7 @@ export type RootStackParamList = {
   NewChat: undefined;
   Profile: undefined;
   TimerSelector: { currentValue: string };
+  AdminDashboard: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -78,6 +80,13 @@ export default function RootStackNavigator() {
               presentation: "transparentModal",
               headerShown: false,
               animation: "fade",
+            }}
+          />
+          <Stack.Screen
+            name="AdminDashboard"
+            component={AdminDashboardScreen}
+            options={{
+              headerShown: false,
             }}
           />
         </>

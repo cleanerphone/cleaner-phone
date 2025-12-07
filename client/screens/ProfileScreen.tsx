@@ -1,6 +1,8 @@
 import { View, StyleSheet, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -8,15 +10,21 @@ import { Avatar } from "@/components/Avatar";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { Spacing, BorderRadius, Typography } from "@/constants/theme";
+import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { theme } = useTheme();
   const { user, logout } = useAuth();
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleAdminDashboard = () => {
+    navigation.navigate("AdminDashboard");
   };
 
   return (
@@ -62,7 +70,7 @@ export default function ProfileScreen() {
                 {user?.role === "super_admin" ? "Super Admin" : "User"}
               </ThemedText>
             </View>
-            {user?.companyId && (
+            {user?.companyId ? (
               <View style={styles.infoRow}>
                 <Feather name="briefcase" size={20} color={theme.textSecondary} />
                 <ThemedText style={[styles.infoLabel, { color: theme.textSecondary }]}>
@@ -72,9 +80,21 @@ export default function ProfileScreen() {
                   {user.companyId}
                 </ThemedText>
               </View>
-            )}
+            ) : null}
           </View>
         </View>
+
+        {user?.role === "super_admin" ? (
+          <Pressable
+            style={[styles.adminButton, { backgroundColor: theme.primary }]}
+            onPress={handleAdminDashboard}
+          >
+            <Feather name="settings" size={20} color={theme.buttonText} />
+            <ThemedText style={[styles.adminButtonText, { color: theme.buttonText }]}>
+              Admin Dashboard
+            </ThemedText>
+          </Pressable>
+        ) : null}
 
         <View style={styles.footer}>
           <Pressable
@@ -145,6 +165,19 @@ const styles = StyleSheet.create({
   },
   footer: {
     marginTop: "auto",
+  },
+  adminButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  adminButtonText: {
+    ...Typography.body,
+    fontWeight: "600",
   },
   logoutButton: {
     flexDirection: "row",
