@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ActivityIndicator, View, StyleSheet } from "react-native";
 import { useTheme } from "@/hooks/useTheme";
 
-import LoginScreen from "@/screens/LoginScreen";
+import WelcomeScreen from "@/screens/WelcomeScreen";
 import ConversationsScreen from "@/screens/ConversationsScreen";
 import ChatScreen from "@/screens/ChatScreen";
 import NewChatScreen from "@/screens/NewChatScreen";
@@ -43,7 +43,7 @@ export default function RootStackNavigator() {
       {!isAuthenticated ? (
         <Stack.Screen
           name="Login"
-          component={LoginScreen}
+          component={WelcomeScreen}
           options={{ headerShown: false }}
         />
       ) : (
