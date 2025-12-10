@@ -11,6 +11,9 @@ export function getApiUrl(): string {
     throw new Error("EXPO_PUBLIC_DOMAIN is not set");
   }
 
+  // Remove port if present (Replit proxies to the correct port automatically)
+  host = host.replace(/:5000$/, "");
+
   let url = new URL(`https://${host}`);
 
   return url.href;

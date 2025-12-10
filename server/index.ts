@@ -15,33 +15,25 @@ declare module "http" {
 
 function setupCors(app: express.Application) {
   app.use((req, res, next) => {
-    const origins = new Set<string>();
-
-    if (process.env.REPLIT_DEV_DOMAIN) {
-      origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
-      origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}:5000`);
-    }
-
-    if (process.env.REPLIT_DOMAINS) {
-      process.env.REPLIT_DOMAINS.split(",").forEach((d) => {
-        origins.add(`https://${d.trim()}`);
-        origins.add(`https://${d.trim()}:5000`);
-      });
-    }
-
-    origins.add("http://localhost:8081");
-    origins.add("http://localhost:5000");
-
     const origin = req.header("origin");
 
-    if (origin && origins.has(origin)) {
-      res.header("Access-Control-Allow-Origin", origin);
-      res.header(
-        "Access-Control-Allow-Methods",
-        "GET, POST, PUT, DELETE, OPTIONS",
-      );
-      res.header("Access-Control-Allow-Headers", "Content-Type");
-      res.header("Access-Control-Allow-Credentials", "true");
+    // In development, allow all origins that match our patterns
+    if (origin) {
+      const isAllowed =
+        origin.includes("replit.dev") ||
+        origin.includes("replit.app") ||
+        origin.startsWith("http://localhost") ||
+        origin.startsWith("https://localhost");
+
+      if (isAllowed) {
+        res.header("Access-Control-Allow-Origin", origin);
+        res.header(
+          "Access-Control-Allow-Methods",
+          "GET, POST, PUT, DELETE, OPTIONS",
+        );
+        res.header("Access-Control-Allow-Headers", "Content-Type");
+        res.header("Access-Control-Allow-Credentials", "true");
+      }
     }
 
     if (req.method === "OPTIONS") {
