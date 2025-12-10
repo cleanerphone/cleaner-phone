@@ -43,7 +43,45 @@ type UserLocation = {
   lastUpdate: string | null;
 };
 
-type TabType = "users" | "locations";
+type AdminConversation = {
+  id: string;
+  participant1: {
+    id: string;
+    displayName: string;
+    username: string;
+    isOnline: boolean;
+  };
+  participant2: {
+    id: string;
+    displayName: string;
+    username: string;
+    isOnline: boolean;
+  };
+  lastMessage: {
+    id: string;
+    type: string;
+    content: string | null;
+    expiryType: string;
+    createdAt: string;
+    senderId: string;
+  } | null;
+  messageCount: number;
+  createdAt: string;
+};
+
+type AdminMessage = {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  type: string;
+  content: string | null;
+  imageUrl: string | null;
+  expiryType: string;
+  createdAt: string;
+  isViewed: boolean;
+};
+
+type TabType = "users" | "locations" | "conversations";
 
 export default function AdminDashboardScreen() {
   const insets = useSafeAreaInsets();
@@ -54,6 +92,7 @@ export default function AdminDashboardScreen() {
   const [activeTab, setActiveTab] = useState<TabType>("users");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<AdminConversation | null>(null);
 
   const [formData, setFormData] = useState({
     username: "",
@@ -70,6 +109,15 @@ export default function AdminDashboardScreen() {
   const { data: locations = [], isLoading: locationsLoading } = useQuery<UserLocation[]>({
     queryKey: ["/api/admin/locations"],
     refetchInterval: 10000,
+  });
+
+  const { data: conversations = [], isLoading: conversationsLoading } = useQuery<AdminConversation[]>({
+    queryKey: ["/api/admin/conversations"],
+  });
+
+  const { data: conversationMessages = [], isLoading: messagesLoading } = useQuery<AdminMessage[]>({
+    queryKey: [`/api/admin/conversations/${selectedConversation?.id}/messages`],
+    enabled: !!selectedConversation,
   });
 
   const createUserMutation = useMutation({
@@ -231,6 +279,122 @@ export default function AdminDashboardScreen() {
       </View>
       <View style={[styles.onlineIndicator, { backgroundColor: item.user.isOnline ? colors.success : colors.textSecondary }]} />
     </View>
+  );
+
+  const renderConversationItem = ({ item }: { item: AdminConversation }) => (
+    <Pressable 
+      style={[styles.conversationCard, { backgroundColor: colors.backgroundSecondary }]}
+      onPress={() => setSelectedConversation(item)}
+    >
+      <View style={styles.conversationHeader}>
+        <View style={styles.participantsRow}>
+          <Avatar name={item.participant1.displayName} size={36} isOnline={item.participant1.isOnline} />
+          <Feather name="arrow-right" size={16} color={colors.textSecondary} style={{ marginHorizontal: Spacing.xs }} />
+          <Avatar name={item.participant2.displayName} size={36} isOnline={item.participant2.isOnline} />
+        </View>
+        <View style={[styles.messageCountBadge, { backgroundColor: colors.primary }]}>
+          <ThemedText style={styles.messageCountText}>{item.messageCount}</ThemedText>
+        </View>
+      </View>
+      <View style={styles.conversationParticipants}>
+        <ThemedText style={styles.participantName}>{item.participant1.displayName}</ThemedText>
+        <ThemedText style={[styles.participantSeparator, { color: colors.textSecondary }]}> & </ThemedText>
+        <ThemedText style={styles.participantName}>{item.participant2.displayName}</ThemedText>
+      </View>
+      {item.lastMessage ? (
+        <ThemedText style={[styles.lastMessagePreview, { color: colors.textSecondary }]} numberOfLines={1}>
+          {item.lastMessage.type === "image" ? "[Gambar]" : item.lastMessage.content || "[Pesan kosong]"}
+        </ThemedText>
+      ) : (
+        <ThemedText style={[styles.lastMessagePreview, { color: colors.textSecondary }]}>
+          Belum ada pesan
+        </ThemedText>
+      )}
+      <ThemedText style={[styles.conversationDate, { color: colors.textSecondary }]}>
+        {new Date(item.createdAt).toLocaleDateString()}
+      </ThemedText>
+    </Pressable>
+  );
+
+  const getSenderName = (senderId: string) => {
+    if (!selectedConversation) return "Unknown";
+    if (senderId === selectedConversation.participant1.id) return selectedConversation.participant1.displayName;
+    if (senderId === selectedConversation.participant2.id) return selectedConversation.participant2.displayName;
+    return "Unknown";
+  };
+
+  const renderMessagesModal = () => (
+    <Modal
+      visible={selectedConversation !== null}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setSelectedConversation(null)}
+    >
+      <View style={[styles.messagesModalContainer, { backgroundColor: colors.backgroundDefault }]}>
+        <View style={[styles.messagesModalHeader, { paddingTop: insets.top + Spacing.md, borderBottomColor: colors.border }]}>
+          <Pressable onPress={() => setSelectedConversation(null)} style={styles.backButton}>
+            <Feather name="arrow-left" size={24} color={colors.text} />
+          </Pressable>
+          <View style={styles.messagesModalHeaderInfo}>
+            <ThemedText style={styles.messagesModalTitle}>
+              {selectedConversation?.participant1.displayName} & {selectedConversation?.participant2.displayName}
+            </ThemedText>
+            <ThemedText style={[styles.messagesModalSubtitle, { color: colors.textSecondary }]}>
+              {conversationMessages.length} pesan
+            </ThemedText>
+          </View>
+        </View>
+        
+        {messagesLoading ? (
+          <View style={styles.loading}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : (
+          <FlatList
+            data={conversationMessages}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={[styles.messageItem, { backgroundColor: colors.backgroundSecondary }]}>
+                <View style={styles.messageHeader}>
+                  <ThemedText style={styles.messageSender}>{getSenderName(item.senderId)}</ThemedText>
+                  <ThemedText style={[styles.messageTime, { color: colors.textSecondary }]}>
+                    {new Date(item.createdAt).toLocaleString()}
+                  </ThemedText>
+                </View>
+                {item.type === "image" && item.imageUrl ? (
+                  <ThemedText style={[styles.messageContent, { color: colors.primary }]}>
+                    [Gambar: {item.imageUrl}]
+                  </ThemedText>
+                ) : (
+                  <ThemedText style={styles.messageContent}>{item.content || "[Pesan kosong]"}</ThemedText>
+                )}
+                <View style={styles.messageFooter}>
+                  <View style={[styles.expiryBadge, { backgroundColor: item.expiryType === "permanent" ? colors.success : colors.secondary }]}>
+                    <ThemedText style={styles.expiryBadgeText}>
+                      {item.expiryType === "permanent" ? "Permanen" : item.expiryType}
+                    </ThemedText>
+                  </View>
+                  {item.isViewed ? (
+                    <Feather name="check-circle" size={14} color={colors.success} />
+                  ) : (
+                    <Feather name="circle" size={14} color={colors.textSecondary} />
+                  )}
+                </View>
+              </View>
+            )}
+            contentContainerStyle={[styles.messagesListContent, { paddingBottom: insets.bottom + Spacing.lg }]}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Feather name="message-circle" size={64} color={colors.textSecondary} />
+                <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+                  Belum ada pesan
+                </ThemedText>
+              </View>
+            }
+          />
+        )}
+      </View>
+    </Modal>
   );
 
   const renderUserForm = () => (
@@ -436,6 +600,27 @@ export default function AdminDashboardScreen() {
             Locations
           </ThemedText>
         </Pressable>
+        <Pressable
+          style={[
+            styles.tab,
+            activeTab === "conversations" && { backgroundColor: colors.primary },
+          ]}
+          onPress={() => setActiveTab("conversations")}
+        >
+          <Feather
+            name="message-circle"
+            size={18}
+            color={activeTab === "conversations" ? "#FFFFFF" : colors.textSecondary}
+          />
+          <ThemedText
+            style={[
+              styles.tabText,
+              activeTab === "conversations" && { color: "#FFFFFF" },
+            ]}
+          >
+            Chats
+          </ThemedText>
+        </Pressable>
       </View>
 
       {activeTab === "users" ? (
@@ -470,7 +655,7 @@ export default function AdminDashboardScreen() {
             <Feather name="plus" size={24} color="#FFFFFF" />
           </Pressable>
         </>
-      ) : (
+      ) : activeTab === "locations" ? (
         <>
           {locationsLoading ? (
             <View style={styles.loading}>
@@ -496,9 +681,36 @@ export default function AdminDashboardScreen() {
             />
           )}
         </>
+      ) : (
+        <>
+          {conversationsLoading ? (
+            <View style={styles.loading}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : (
+            <FlatList
+              data={conversations}
+              keyExtractor={(item) => item.id}
+              renderItem={renderConversationItem}
+              contentContainerStyle={[
+                styles.listContent,
+                { paddingBottom: insets.bottom + Spacing.xl },
+              ]}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Feather name="message-circle" size={64} color={colors.textSecondary} />
+                  <ThemedText style={[styles.emptyText, { color: colors.textSecondary }]}>
+                    Belum ada percakapan
+                  </ThemedText>
+                </View>
+              }
+            />
+          )}
+        </>
       )}
 
       {renderUserForm()}
+      {renderMessagesModal()}
     </ThemedView>
   );
 }
@@ -707,5 +919,113 @@ const styles = StyleSheet.create({
     ...Typography.body,
     color: "#FFFFFF",
     fontWeight: "600",
+  },
+  conversationCard: {
+    borderRadius: BorderRadius.md,
+    padding: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  conversationHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  participantsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  messageCountBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    minWidth: 28,
+    alignItems: "center",
+  },
+  messageCountText: {
+    ...Typography.caption,
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  conversationParticipants: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: Spacing.xs,
+  },
+  participantName: {
+    ...Typography.body,
+    fontWeight: "600",
+  },
+  participantSeparator: {
+    ...Typography.body,
+  },
+  lastMessagePreview: {
+    ...Typography.small,
+  },
+  conversationDate: {
+    ...Typography.caption,
+  },
+  messagesModalContainer: {
+    flex: 1,
+  },
+  messagesModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: 1,
+    gap: Spacing.md,
+  },
+  backButton: {
+    padding: Spacing.xs,
+  },
+  messagesModalHeaderInfo: {
+    flex: 1,
+  },
+  messagesModalTitle: {
+    ...Typography.body,
+    fontWeight: "600",
+  },
+  messagesModalSubtitle: {
+    ...Typography.caption,
+  },
+  messagesListContent: {
+    padding: Spacing.lg,
+    gap: Spacing.md,
+  },
+  messageItem: {
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+  },
+  messageHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  messageSender: {
+    ...Typography.small,
+    fontWeight: "600",
+  },
+  messageTime: {
+    ...Typography.caption,
+  },
+  messageContent: {
+    ...Typography.body,
+  },
+  messageFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: Spacing.xs,
+  },
+  expiryBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+  },
+  expiryBadgeText: {
+    ...Typography.caption,
+    color: "#FFFFFF",
+    fontWeight: "500",
   },
 });
