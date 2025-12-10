@@ -5,6 +5,13 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
  * @returns {string} The API base URL
  */
 export function getApiUrl(): string {
+  // For web, use the current origin (same domain)
+  if (typeof window !== "undefined" && window.location) {
+    // Use current origin for web (works with Replit's proxy)
+    return window.location.origin;
+  }
+
+  // For native, use environment variable
   let host = process.env.EXPO_PUBLIC_DOMAIN;
 
   if (!host) {
@@ -14,9 +21,7 @@ export function getApiUrl(): string {
   // Remove port if present (Replit proxies to the correct port automatically)
   host = host.replace(/:5000$/, "");
 
-  let url = new URL(`https://${host}`);
-
-  return url.href;
+  return `https://${host}`;
 }
 
 async function throwIfResNotOk(res: Response) {
