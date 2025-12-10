@@ -19,13 +19,18 @@ function setupCors(app: express.Application) {
 
     if (process.env.REPLIT_DEV_DOMAIN) {
       origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
+      origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}:5000`);
     }
 
     if (process.env.REPLIT_DOMAINS) {
       process.env.REPLIT_DOMAINS.split(",").forEach((d) => {
         origins.add(`https://${d.trim()}`);
+        origins.add(`https://${d.trim()}:5000`);
       });
     }
+
+    origins.add("http://localhost:8081");
+    origins.add("http://localhost:5000");
 
     const origin = req.header("origin");
 
