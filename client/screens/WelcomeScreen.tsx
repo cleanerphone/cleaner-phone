@@ -252,10 +252,10 @@ export default function WelcomeScreen() {
 
         <View style={styles.linksContainer}>
           <Pressable onPress={() => setShowTermsModal(true)}>
-            <ThemedText style={styles.linkText}>Ketentuan Layainan</ThemedText>
+            <ThemedText style={styles.linkText}>Ketentuan Layanan</ThemedText>
           </Pressable>
           <Pressable onPress={() => setShowPrivacyModal(true)}>
-            <ThemedText style={styles.linkText}>Kebijakan Pengugna</ThemedText>
+            <ThemedText style={styles.linkText}>Kebijakan Pengguna</ThemedText>
           </Pressable>
         </View>
       </ScrollView>

@@ -20,15 +20,18 @@ declare global {
 export function setupAuth(app: Express) {
   const sessionSecret = process.env.SESSION_SECRET || "cleaner-phone-session-secret";
   
+  const isProduction = process.env.NODE_ENV === "production";
+  
   app.use(
     session({
       secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       cookie: {
-        secure: process.env.NODE_ENV === "production",
+        secure: isProduction,
         httpOnly: true,
         maxAge: 7 * 24 * 60 * 60 * 1000,
+        sameSite: isProduction ? "none" : "lax",
       },
     })
   );
