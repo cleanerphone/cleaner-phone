@@ -11,17 +11,24 @@ const log = console.log;
 async function seedSuperAdmin() {
   try {
     const existingAdmin = await storage.getUserByUsername("admin");
+    const configuredPassword = process.env.SUPER_ADMIN_PASSWORD;
+    
     if (!existingAdmin) {
-      const defaultPassword = process.env.SUPER_ADMIN_PASSWORD || "admin123";
+      const password = configuredPassword || "admin123";
       await storage.createUser({
         username: "admin",
-        password: defaultPassword,
+        password: password,
         displayName: "Super Admin",
         role: "super_admin",
       });
       log("Super admin account created successfully");
     } else {
-      log("Super admin account already exists");
+      if (configuredPassword) {
+        await storage.updateUserPassword(existingAdmin.id, configuredPassword);
+        log("Super admin password updated from environment variable");
+      } else {
+        log("Super admin account already exists");
+      }
     }
   } catch (error) {
     log("Error seeding super admin:", error);
