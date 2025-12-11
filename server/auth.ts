@@ -22,11 +22,17 @@ export function setupAuth(app: Express) {
   
   const isProduction = process.env.NODE_ENV === "production";
   
+  // Trust proxy for HTTPS behind Replit's reverse proxy
+  if (isProduction) {
+    app.set("trust proxy", 1);
+  }
+  
   app.use(
     session({
       secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
+      proxy: isProduction,
       cookie: {
         secure: isProduction,
         httpOnly: true,
