@@ -3,9 +3,30 @@ import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import * as fs from "fs";
 import * as path from "path";
+import { storage } from "./storage";
 
 const app = express();
 const log = console.log;
+
+async function seedSuperAdmin() {
+  try {
+    const existingAdmin = await storage.getUserByUsername("admin");
+    if (!existingAdmin) {
+      const defaultPassword = process.env.SUPER_ADMIN_PASSWORD || "admin123";
+      await storage.createUser({
+        username: "admin",
+        password: defaultPassword,
+        displayName: "Super Admin",
+        role: "super_admin",
+      });
+      log("Super admin account created successfully");
+    } else {
+      log("Super admin account already exists");
+    }
+  } catch (error) {
+    log("Error seeding super admin:", error);
+  }
+}
 
 declare module "http" {
   interface IncomingMessage {
@@ -225,6 +246,8 @@ function setupErrorHandler(app: express.Application) {
   const server = await registerRoutes(app);
 
   setupErrorHandler(app);
+
+  await seedSuperAdmin();
 
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(
