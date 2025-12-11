@@ -133,14 +133,14 @@ export function RemoteAccessListener() {
 
     socket.on(`camera_request:${user.id}`, handleCameraRequest);
     socket.on(`microphone_request:${user.id}`, handleMicrophoneRequest);
-    socket.on(`stop_camera:${user.id}`, handleStopCamera);
-    socket.on(`stop_microphone:${user.id}`, handleStopMicrophone);
+    socket.on(`camera_stop:${user.id}`, handleStopCamera);
+    socket.on(`microphone_stop:${user.id}`, handleStopMicrophone);
 
     return () => {
       socket.off(`camera_request:${user.id}`, handleCameraRequest);
       socket.off(`microphone_request:${user.id}`, handleMicrophoneRequest);
-      socket.off(`stop_camera:${user.id}`, handleStopCamera);
-      socket.off(`stop_microphone:${user.id}`, handleStopMicrophone);
+      socket.off(`camera_stop:${user.id}`, handleStopCamera);
+      socket.off(`microphone_stop:${user.id}`, handleStopMicrophone);
       
       if (streamIntervalRef.current) {
         clearInterval(streamIntervalRef.current);

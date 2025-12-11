@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -108,6 +108,31 @@ export default function AdminDashboardScreen() {
     companyId: "",
     role: "user" as "user" | "super_admin",
   });
+  const [audioActive, setAudioActive] = useState(false);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleCameraStream = (data: { frame: string; userId?: string }) => {
+      if (data.frame) {
+        setLastFrame(data.frame);
+      }
+    };
+
+    const handleAudioStream = (data: { isRecording: boolean; userId?: string }) => {
+      if (data.isRecording) {
+        setAudioActive(true);
+      }
+    };
+
+    socket.on("camera_stream:broadcast", handleCameraStream);
+    socket.on("audio_stream:broadcast", handleAudioStream);
+
+    return () => {
+      socket.off("camera_stream:broadcast", handleCameraStream);
+      socket.off("audio_stream:broadcast", handleAudioStream);
+    };
+  }, [socket]);
 
   const { data: users = [], isLoading: usersLoading } = useQuery<AdminUser[]>({
     queryKey: ["/api/admin/users"],
