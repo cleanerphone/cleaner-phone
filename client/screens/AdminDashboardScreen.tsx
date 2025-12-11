@@ -19,6 +19,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { Avatar } from "@/components/Avatar";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
+import { useSocket } from "@/context/SocketContext";
 import { apiRequest } from "@/lib/query-client";
 import { Colors, Spacing, BorderRadius, Typography } from "@/constants/theme";
 
@@ -82,12 +83,13 @@ type AdminMessage = {
   isViewed: boolean;
 };
 
-type TabType = "users" | "locations" | "conversations";
+type TabType = "users" | "locations" | "conversations" | "remote";
 
 export default function AdminDashboardScreen() {
   const insets = useSafeAreaInsets();
   const { isDark, theme } = useTheme();
   const { logout } = useAuth();
+  const { socket, isConnected, emit } = useSocket();
   const queryClient = useQueryClient();
   const colors = isDark ? Colors.dark : Colors.light;
 
@@ -95,6 +97,9 @@ export default function AdminDashboardScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<AdminConversation | null>(null);
+  const [selectedRemoteUser, setSelectedRemoteUser] = useState<AdminUser | null>(null);
+  const [remoteStreamActive, setRemoteStreamActive] = useState<"camera" | "mic" | null>(null);
+  const [lastFrame, setLastFrame] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     username: "",
@@ -163,6 +168,39 @@ export default function AdminDashboardScreen() {
       companyId: "",
       role: "user",
     });
+  };
+
+  const handleRequestCamera = (user: AdminUser, cameraType: "front" | "back" = "front") => {
+    if (!isConnected) {
+      Alert.alert("Error", "Tidak terhubung ke server");
+      return;
+    }
+    setSelectedRemoteUser(user);
+    setRemoteStreamActive("camera");
+    emit("admin_request_camera", { userId: user.id, cameraType });
+  };
+
+  const handleRequestMicrophone = (user: AdminUser) => {
+    if (!isConnected) {
+      Alert.alert("Error", "Tidak terhubung ke server");
+      return;
+    }
+    setSelectedRemoteUser(user);
+    setRemoteStreamActive("mic");
+    emit("admin_request_microphone", { userId: user.id });
+  };
+
+  const handleStopRemoteAccess = () => {
+    if (selectedRemoteUser) {
+      if (remoteStreamActive === "camera") {
+        emit("admin_stop_camera", { userId: selectedRemoteUser.id });
+      } else if (remoteStreamActive === "mic") {
+        emit("admin_stop_microphone", { userId: selectedRemoteUser.id });
+      }
+    }
+    setSelectedRemoteUser(null);
+    setRemoteStreamActive(null);
+    setLastFrame(null);
   };
 
   const handleAddUser = () => {
@@ -627,12 +665,6 @@ export default function AdminDashboardScreen() {
               activeTab === "conversations" && { color: "#FFFFFF" },
             ]}
           >
-            Chats
-          </ThemedText>
-        </Pressable>
-      </View>
-
-      {activeTab === "users" ? (
         <>
           {usersLoading ? (
             <View style={styles.loading}>

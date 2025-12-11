@@ -12,7 +12,9 @@ import { queryClient, apiRequest } from "@/lib/query-client";
 
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { RemoteAccessListener } from "@/components/RemoteAccessListener";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { SocketProvider } from "@/context/SocketContext";
 
 function LocationTracker() {
   const { isAuthenticated, user } = useAuth();
@@ -59,6 +61,7 @@ function AppContent() {
     <>
       <RootStackNavigator />
       <LocationTracker />
+      <RemoteAccessListener />
     </>
   );
 }
@@ -68,16 +71,18 @@ export default function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <SafeAreaProvider>
-            <GestureHandlerRootView style={styles.root}>
-              <KeyboardProvider>
-                <NavigationContainer>
-                  <AppContent />
-                </NavigationContainer>
-                <StatusBar style="auto" />
-              </KeyboardProvider>
-            </GestureHandlerRootView>
-          </SafeAreaProvider>
+          <SocketProvider>
+            <SafeAreaProvider>
+              <GestureHandlerRootView style={styles.root}>
+                <KeyboardProvider>
+                  <NavigationContainer>
+                    <AppContent />
+                  </NavigationContainer>
+                  <StatusBar style="auto" />
+                </KeyboardProvider>
+              </GestureHandlerRootView>
+            </SafeAreaProvider>
+          </SocketProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>
