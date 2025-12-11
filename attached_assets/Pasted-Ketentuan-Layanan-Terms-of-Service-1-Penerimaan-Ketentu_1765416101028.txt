@@ -1,0 +1,38 @@
+Ketentuan Layanan (Terms of Service)
+​1. Penerimaan Ketentuan
+​Dengan mengunduh, memasang, atau menggunakan aplikasi [Nama Aplikasi Anda] ("Layanan"), Anda setuju untuk terikat oleh Ketentuan Layanan ini ("Ketentuan"). Jika Anda tidak setuju dengan Ketentuan ini, jangan gunakan Layanan.
+​2. Layanan yang Disediakan
+​Aplikasi [Nama Aplikasi Anda] dirancang untuk membantu membersihkan file sampah, mengoptimalkan memori, dan memantau status baterai perangkat seluler Anda.
+​3. Izin Pengguna
+​Untuk berfungsi dengan baik, Layanan ini memerlukan izin tertentu untuk mengakses dan mengelola file pada perangkat Anda. Anda bertanggung jawab untuk memberikan izin yang diperlukan dan memahami bahwa penggunaan fitur pembersihan dapat memengaruhi fungsionalitas aplikasi atau sistem tertentu.
+​4. Batasan Penggunaan
+​Anda setuju untuk tidak:
+​Menggunakan Layanan untuk tujuan ilegal atau yang melanggar hukum.
+​Mencoba meretas, memodifikasi, atau membalik rekayasa Layanan.
+​Menggunakan Layanan untuk mendistribusikan virus, malware, atau kode berbahaya lainnya.
+​5. Penafian Jaminan
+​Layanan ini disediakan "sebagaimana adanya" dan "sebagaimana tersedia" tanpa jaminan dalam bentuk apa pun. Kami tidak menjamin bahwa Layanan akan selalu bebas dari kesalahan, aman, atau sesuai untuk tujuan Anda. Anda menggunakan Layanan atas risiko Anda sendiri.
+​6. Batasan Tanggung Jawab
+​Kami tidak bertanggung jawab atas kerugian atau kerusakan, baik langsung, tidak langsung, insidental, atau konsekuensial, yang timbul dari penggunaan atau ketidakmampuan Anda untuk menggunakan Layanan.
+​7. Perubahan Ketentuan
+​Kami berhak untuk memodifikasi atau mengganti Ketentuan ini kapan saja. Kami akan memberi tahu Anda tentang perubahan tersebut melalui aplikasi atau melalui cara lain. Penggunaan Anda yang berkelanjutan setelah perubahan berarti Anda menerima Ketentuan yang direvisi.
+​🔒 Kebijakan Pengguna (Kebijakan Privasi / Privacy Policy)
+​1. Informasi yang Kami Kumpulkan
+​Layanan ini dirancang untuk beroperasi dengan mengumpulkan data minimal yang diperlukan untuk fungsinya:
+​Data Non-Pribadi: Kami mungkin mengumpulkan informasi statistik tentang perangkat Anda (seperti model perangkat, versi OS) untuk tujuan analitik dan peningkatan Layanan.
+​Data Penggunaan Aplikasi: Informasi tentang cara Anda menggunakan aplikasi (misalnya, fitur mana yang paling sering digunakan, waktu penggunaan).
+​Data Pembersihan: Kami mengakses informasi tentang file di perangkat Anda (ukuran file sampah, cache, dll.) hanya untuk tujuan pembersihan dan tidak mengumpulkan konten sebenarnya dari file pribadi Anda.
+​Kami TIDAK mengumpulkan informasi yang dapat mengidentifikasi Anda secara pribadi (seperti nama, alamat email, nomor telepon) kecuali Anda secara sukarela memberikannya (misalnya, melalui dukungan pelanggan).
+​2. Bagaimana Kami Menggunakan Informasi Anda
+​Informasi yang dikumpulkan digunakan semata-mata untuk:
+​Menyediakan dan memelihara Layanan.
+​Menganalisis penggunaan Layanan untuk perbaikan dan pengembangan fitur baru.
+​Menanggapi permintaan dukungan pelanggan Anda.
+​3. Pembagian Informasi
+​Kami tidak menjual, memperdagangkan, atau menyewakan informasi pribadi Anda kepada pihak lain. Kami dapat membagikan data non-pribadi agregat dengan mitra dan penyedia layanan pihak ketiga (misalnya, layanan analitik) untuk membantu kami menganalisis dan meningkatkan Layanan. Pihak ketiga ini terikat untuk menjaga kerahasiaan data.
+​4. Keamanan Data
+​Kami berkomitmen untuk melindungi keamanan data Anda. Kami menerapkan langkah-langkah keamanan standar industri untuk membantu melindungi dari akses, perubahan, pengungkapan, atau penghancuran data Anda yang tidak sah.
+​5. Privasi Anak
+​Layanan ini tidak ditujukan untuk anak-anak di bawah usia 13 tahun. Kami tidak secara sengaja mengumpulkan informasi yang dapat diidentifikasi secara pribadi dari anak-anak di bawah 13 tahun.
+​6. Persetujuan
+​Dengan menggunakan Layanan, Anda dengan ini menyetujui Kebijakan Privasi kami dan setuju dengan Ketentuannya.

@@ -1,13 +1,33 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 /**
- * Gets the base URL for the Express API server (e.g., "http://localhost:3000")
+ * Gets the base URL for the Express API server (e.g., "http://localhost:5000")
  * @returns {string} The API base URL
  */
 export function getApiUrl(): string {
-  // For web, use the current origin (same domain)
+  // For web development, redirect to Express server port
   if (typeof window !== "undefined" && window.location) {
-    // Use current origin for web (works with Replit's proxy)
+    const currentHost = window.location.hostname;
+    const protocol = window.location.protocol;
+    
+    // On localhost (development), use port 5000 for Express API
+    if (currentHost === "localhost" || currentHost === "127.0.0.1") {
+      return `${protocol}//localhost:5000`;
+    }
+    
+    // On Replit, the proxy routes to the correct port based on the domain
+    // But Metro bundler (8081) intercepts requests first, so we need to use port suffix
+    // Replit supports accessing specific ports via URL like: domain-00-user.replit.dev:5000
+    // However, this doesn't work reliably, so we use a different approach:
+    // Check if EXPO_PUBLIC_DOMAIN has the API host
+    const expoPublicDomain = process.env.EXPO_PUBLIC_DOMAIN;
+    if (expoPublicDomain) {
+      // Extract host without port
+      const apiHost = expoPublicDomain.replace(/:5000$/, "");
+      return `https://${apiHost}`;
+    }
+    
+    // Fallback: use current origin (may not work if Metro intercepts)
     return window.location.origin;
   }
 

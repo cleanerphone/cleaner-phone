@@ -23,7 +23,9 @@ function setupCors(app: express.Application) {
         origin.includes("replit.dev") ||
         origin.includes("replit.app") ||
         origin.startsWith("http://localhost") ||
-        origin.startsWith("https://localhost");
+        origin.startsWith("https://localhost") ||
+        origin.startsWith("http://127.0.0.1") ||
+        origin.startsWith("https://127.0.0.1");
 
       if (isAllowed) {
         res.header("Access-Control-Allow-Origin", origin);
