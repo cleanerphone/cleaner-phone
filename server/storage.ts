@@ -4,10 +4,14 @@ import {
   type Conversation,
   type Message,
   type InsertMessage,
+  type UserKey,
+  type SecurityEvent,
   users,
   conversations,
   messages,
   remoteAccessSessions,
+  userKeys,
+  securityEvents,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, sql, isNull } from "drizzle-orm";
@@ -45,6 +49,18 @@ export interface IStorage {
     messageCount: number;
   }>>;
   getAllMessagesForConversation(conversationId: string): Promise<Message[]>;
+
+  getUserKey(userId: string): Promise<UserKey | undefined>;
+  setUserKey(userId: string, publicKey: string): Promise<UserKey>;
+  
+  createSecurityEvent(data: {
+    userId?: string;
+    eventType: "screenshot_attempt" | "screen_recording_detected" | "login_failed" | "suspicious_activity";
+    details?: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<SecurityEvent>;
+  getSecurityEvents(limit?: number): Promise<SecurityEvent[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -330,6 +346,50 @@ export class DatabaseStorage implements IStorage {
       .from(messages)
       .where(eq(messages.conversationId, conversationId))
       .orderBy(messages.createdAt);
+  }
+
+  async getUserKey(userId: string): Promise<UserKey | undefined> {
+    const [key] = await db.select().from(userKeys).where(eq(userKeys.userId, userId));
+    return key || undefined;
+  }
+
+  async setUserKey(userId: string, publicKey: string): Promise<UserKey> {
+    const existing = await this.getUserKey(userId);
+    if (existing) {
+      const [updated] = await db
+        .update(userKeys)
+        .set({ publicKey, updatedAt: new Date() })
+        .where(eq(userKeys.userId, userId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db
+      .insert(userKeys)
+      .values({ userId, publicKey })
+      .returning();
+    return created;
+  }
+
+  async createSecurityEvent(data: {
+    userId?: string;
+    eventType: "screenshot_attempt" | "screen_recording_detected" | "login_failed" | "suspicious_activity";
+    details?: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<SecurityEvent> {
+    const [event] = await db
+      .insert(securityEvents)
+      .values(data)
+      .returning();
+    return event;
+  }
+
+  async getSecurityEvents(limit: number = 100): Promise<SecurityEvent[]> {
+    return db
+      .select()
+      .from(securityEvents)
+      .orderBy(desc(securityEvents.createdAt))
+      .limit(limit);
   }
 }
 

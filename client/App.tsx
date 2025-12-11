@@ -15,6 +15,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { RemoteAccessListener } from "@/components/RemoteAccessListener";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { SocketProvider } from "@/context/SocketContext";
+import { ScreenSecurityProvider } from "@/context/ScreenSecurityContext";
+import { EncryptionProvider } from "@/context/EncryptionContext";
 
 function LocationTracker() {
   const { isAuthenticated, user } = useAuth();
@@ -58,11 +60,11 @@ function LocationTracker() {
 
 function AppContent() {
   return (
-    <>
+    <ScreenSecurityProvider>
       <RootStackNavigator />
       <LocationTracker />
       <RemoteAccessListener />
-    </>
+    </ScreenSecurityProvider>
   );
 }
 
@@ -71,18 +73,20 @@ export default function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <SocketProvider>
-            <SafeAreaProvider>
-              <GestureHandlerRootView style={styles.root}>
-                <KeyboardProvider>
-                  <NavigationContainer>
-                    <AppContent />
-                  </NavigationContainer>
-                  <StatusBar style="auto" />
-                </KeyboardProvider>
-              </GestureHandlerRootView>
-            </SafeAreaProvider>
-          </SocketProvider>
+          <EncryptionProvider>
+            <SocketProvider>
+              <SafeAreaProvider>
+                <GestureHandlerRootView style={styles.root}>
+                  <KeyboardProvider>
+                    <NavigationContainer>
+                      <AppContent />
+                    </NavigationContainer>
+                    <StatusBar style="auto" />
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </SafeAreaProvider>
+            </SocketProvider>
+          </EncryptionProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>

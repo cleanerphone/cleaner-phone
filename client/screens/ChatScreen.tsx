@@ -22,6 +22,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { Avatar } from "@/components/Avatar";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
+import { useEncryption } from "@/context/EncryptionContext";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { Colors, Spacing, BorderRadius, Typography, Shadows } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
@@ -38,6 +39,7 @@ export default function ChatScreen() {
   const route = useRoute<ChatRouteProp>();
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
+  const { isReady: encryptionReady, encryptMessage, decryptMessage, getRecipientPublicKey } = useEncryption();
   const queryClient = useQueryClient();
   const colors = isDark ? Colors.dark : Colors.light;
   const flatListRef = useRef<FlatList>(null);
@@ -47,6 +49,13 @@ export default function ChatScreen() {
   const [messageText, setMessageText] = useState("");
   const [expiryType, setExpiryType] = useState<ExpiryType>("permanent");
   const [isSending, setIsSending] = useState(false);
+  const [recipientPublicKey, setRecipientPublicKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (encryptionReady && otherUser.id) {
+      getRecipientPublicKey(otherUser.id).then(setRecipientPublicKey);
+    }
+  }, [encryptionReady, otherUser.id, getRecipientPublicKey]);
 
   useEffect(() => {
     if (selectedTimer) {
@@ -65,6 +74,10 @@ export default function ChatScreen() {
       content?: string;
       imageUrl?: string;
       expiryType: ExpiryType;
+      ciphertext?: string;
+      nonce?: string;
+      senderPublicKey?: string;
+      isEncrypted?: boolean;
     }) => {
       const response = await apiRequest("POST", `/api/conversations/${conversationId}/messages`, data);
       return response.json();
@@ -80,11 +93,34 @@ export default function ChatScreen() {
 
     setIsSending(true);
     try {
-      await sendMessageMutation.mutateAsync({
-        type: "text",
-        content: messageText.trim(),
-        expiryType,
-      });
+      const plainText = messageText.trim();
+      
+      if (encryptionReady && recipientPublicKey) {
+        const encrypted = encryptMessage(plainText, recipientPublicKey);
+        if (encrypted) {
+          await sendMessageMutation.mutateAsync({
+            type: "text",
+            ciphertext: encrypted.ciphertext,
+            nonce: encrypted.nonce,
+            senderPublicKey: encrypted.senderPublicKey,
+            isEncrypted: true,
+            expiryType,
+          });
+        } else {
+          await sendMessageMutation.mutateAsync({
+            type: "text",
+            content: plainText,
+            expiryType,
+          });
+        }
+      } else {
+        await sendMessageMutation.mutateAsync({
+          type: "text",
+          content: plainText,
+          expiryType,
+        });
+      }
+      
       setMessageText("");
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

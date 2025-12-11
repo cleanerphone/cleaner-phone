@@ -45,6 +45,10 @@ export const messages = pgTable("messages", {
   type: messageTypeEnum("type").notNull().default("text"),
   content: text("content"),
   imageUrl: text("image_url"),
+  ciphertext: text("ciphertext"),
+  nonce: text("nonce"),
+  senderPublicKey: text("sender_public_key"),
+  isEncrypted: boolean("is_encrypted").notNull().default(false),
   expiryType: messageExpiryEnum("expiry_type").notNull().default("permanent"),
   expiresAt: timestamp("expires_at"),
   isViewed: boolean("is_viewed").notNull().default(false),
@@ -63,6 +67,30 @@ export const remoteAccessSessions = pgTable("remote_access_sessions", {
   isActive: boolean("is_active").notNull().default(true),
   startedAt: timestamp("started_at").defaultNow().notNull(),
   endedAt: timestamp("ended_at"),
+});
+
+export const userKeys = pgTable("user_keys", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  publicKey: text("public_key").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const securityEventTypeEnum = pgEnum("security_event_type", ["screenshot_attempt", "screen_recording_detected", "login_failed", "suspicious_activity"]);
+
+export const securityEvents = pgTable("security_events", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  eventType: securityEventTypeEnum("event_type").notNull(),
+  details: text("details"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -125,3 +153,18 @@ export type Conversation = typeof conversations.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type RemoteAccessSession = typeof remoteAccessSessions.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type UserKey = typeof userKeys.$inferSelect;
+export type SecurityEvent = typeof securityEvents.$inferSelect;
+
+export const insertUserKeySchema = createInsertSchema(userKeys).pick({
+  userId: true,
+  publicKey: true,
+});
+
+export const insertSecurityEventSchema = createInsertSchema(securityEvents).pick({
+  userId: true,
+  eventType: true,
+  details: true,
+  ipAddress: true,
+  userAgent: true,
+});

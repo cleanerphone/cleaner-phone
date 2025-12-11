@@ -227,7 +227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/conversations/:id/messages", isAuthenticated, async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { type, content, imageUrl, expiryType } = req.body;
+    const { type, content, imageUrl, expiryType, ciphertext, nonce, senderPublicKey, isEncrypted } = req.body;
     
     const conversation = await storage.getConversation(id);
     if (!conversation) {
@@ -242,10 +242,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       conversationId: id,
       senderId: req.user!.id,
       type: type || "text",
-      content,
+      content: isEncrypted ? null : content,
       imageUrl,
       expiryType: expiryType || "permanent",
-    });
+      ciphertext: isEncrypted ? ciphertext : undefined,
+      nonce: isEncrypted ? nonce : undefined,
+      senderPublicKey: isEncrypted ? senderPublicKey : undefined,
+      isEncrypted: isEncrypted || false,
+    } as any);
     
     io.to(`conversation:${id}`).emit("new_message", message);
     
@@ -259,6 +263,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ error: "Message not found" });
     }
     res.json(message);
+  });
+
+  app.get("/api/keys/:userId", isAuthenticated, async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const key = await storage.getUserKey(userId);
+    if (!key) {
+      return res.status(404).json({ error: "Public key not found" });
+    }
+    res.json({ publicKey: key.publicKey });
+  });
+
+  app.post("/api/keys", isAuthenticated, async (req: Request, res: Response) => {
+    const { publicKey } = req.body;
+    if (!publicKey || typeof publicKey !== "string") {
+      return res.status(400).json({ error: "publicKey is required" });
+    }
+    const key = await storage.setUserKey(req.user!.id, publicKey);
+    res.json({ publicKey: key.publicKey });
+  });
+
+  app.get("/api/keys", isAuthenticated, async (req: Request, res: Response) => {
+    const key = await storage.getUserKey(req.user!.id);
+    if (!key) {
+      return res.status(404).json({ error: "Public key not found" });
+    }
+    res.json({ publicKey: key.publicKey });
+  });
+
+  app.post("/api/security-events", isAuthenticated, async (req: Request, res: Response) => {
+    const { eventType, details } = req.body;
+    const validTypes = ["screenshot_attempt", "screen_recording_detected", "login_failed", "suspicious_activity"];
+    if (!eventType || !validTypes.includes(eventType)) {
+      return res.status(400).json({ error: "Invalid event type" });
+    }
+    const event = await storage.createSecurityEvent({
+      userId: req.user!.id,
+      eventType,
+      details,
+      ipAddress: req.ip || req.socket.remoteAddress,
+      userAgent: req.headers["user-agent"],
+    });
+    res.status(201).json(event);
+  });
+
+  app.get("/api/admin/security-events", isAuthenticated, isSuperAdmin, async (req: Request, res: Response) => {
+    const limit = parseInt(req.query.limit as string) || 100;
+    const events = await storage.getSecurityEvents(limit);
+    res.json(events);
   });
 
   app.post("/api/objects/upload", isAuthenticated, async (_req: Request, res: Response) => {

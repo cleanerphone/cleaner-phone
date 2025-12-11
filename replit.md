@@ -60,6 +60,35 @@ Preferred communication style: Simple, everyday language.
 - Middleware for authentication (`isAuthenticated`) and authorization (`isSuperAdmin`)
 - ACL-based object access control with ownership and visibility policies
 
+### Anti-Surveillance Security Features
+
+**End-to-End Encryption (E2EE)**:
+- X25519 key pairs generated using TweetNaCl library
+- Keys stored securely using expo-secure-store (native) or localStorage (web)
+- Messages encrypted before sending with recipient's public key
+- Shared secret caching for performance optimization
+- Lock icon indicator for encrypted messages in chat
+- API endpoints: `/api/keys` for key exchange, `/api/keys/:userId` for fetching recipient keys
+
+**Screen Capture Protection**:
+- Screenshot blocking on Android via expo-screen-capture `preventScreenCaptureAsync()`
+- Screenshot detection with warning overlay and 3-second display
+- Screen recording/mirroring detection with black screen overlay
+- Automatic security event logging to server with retry mechanism
+
+**Security Event Logging**:
+- Events tracked: screenshot attempts, screen recording detection
+- Retry mechanism (3 attempts with exponential backoff) for reliability
+- Admin dashboard endpoint: `/api/admin/security-events`
+
+**Database Tables for Security**:
+- `user_keys`: Stores user public keys for E2EE
+- `security_events`: Logs all security-related events with timestamps
+
+**Context Providers**:
+- `ScreenSecurityProvider`: Manages screen capture protection and detection
+- `EncryptionProvider`: Manages E2EE key generation, encryption/decryption
+
 ### Database Schema
 
 **Tables**:

@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { View, StyleSheet, Pressable } from "react-native";
 import { Image } from "expo-image";
-import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
+import { useEncryption } from "@/context/EncryptionContext";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { Colors, Spacing, BorderRadius, Typography, Shadows } from "@/constants/theme";
 import { Message } from "@/types";
@@ -18,7 +18,23 @@ interface MessageBubbleProps {
 export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
   const { isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
+  const { decryptMessage, isReady: encryptionReady } = useEncryption();
   const [isRevealed, setIsRevealed] = useState(message.isViewed || isOwn);
+
+  const decryptedContent = useMemo(() => {
+    if (!message.isEncrypted) {
+      return message.content;
+    }
+    if (!encryptionReady || !message.ciphertext || !message.nonce || !message.senderPublicKey) {
+      return "[Encrypted message]";
+    }
+    const decrypted = decryptMessage({
+      ciphertext: message.ciphertext,
+      nonce: message.nonce,
+      senderPublicKey: message.senderPublicKey,
+    });
+    return decrypted || "[Failed to decrypt]";
+  }, [message, encryptionReady, decryptMessage]);
 
   const isViewOnce = message.expiryType === "view_once";
   const isTimed = message.expiryType !== "permanent";
@@ -79,7 +95,7 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
       return (
         <Pressable onPress={handleReveal}>
           <Image
-            source={{ uri: imageUri }}
+            source={{ uri: imageUri || undefined }}
             style={styles.messageImage}
             contentFit="cover"
           />
@@ -101,14 +117,21 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
     }
 
     return (
-      <ThemedText
-        style={[
-          styles.messageText,
-          { color: isOwn ? "#FFFFFF" : colors.text },
-        ]}
-      >
-        {message.content}
-      </ThemedText>
+      <View>
+        <ThemedText
+          style={[
+            styles.messageText,
+            { color: isOwn ? "#FFFFFF" : colors.text },
+          ]}
+        >
+          {decryptedContent}
+        </ThemedText>
+        {message.isEncrypted ? (
+          <View style={styles.encryptedBadge}>
+            <Feather name="lock" size={10} color={isOwn ? "rgba(255,255,255,0.6)" : colors.success} />
+          </View>
+        ) : null}
+      </View>
     );
   };
 
@@ -231,5 +254,10 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 10,
+  },
+  encryptedBadge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
   },
 });

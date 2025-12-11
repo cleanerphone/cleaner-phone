@@ -31,6 +31,10 @@ export interface Message {
   type: "text" | "image";
   content: string | null;
   imageUrl: string | null;
+  ciphertext: string | null;
+  nonce: string | null;
+  senderPublicKey: string | null;
+  isEncrypted: boolean;
   expiryType: "view_once" | "1_minute" | "1_hour" | "24_hours" | "permanent";
   expiresAt: string | null;
   isViewed: boolean;
