@@ -665,6 +665,12 @@ export default function AdminDashboardScreen() {
               activeTab === "conversations" && { color: "#FFFFFF" },
             ]}
           >
+            Conversations
+          </ThemedText>
+        </Pressable>
+      </View>
+
+      {activeTab === "users" ? (
         <>
           {usersLoading ? (
             <View style={styles.loading}>
