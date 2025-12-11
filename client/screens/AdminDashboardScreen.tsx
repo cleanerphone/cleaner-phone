@@ -18,6 +18,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Avatar } from "@/components/Avatar";
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/query-client";
 import { Colors, Spacing, BorderRadius, Typography } from "@/constants/theme";
 
@@ -86,6 +87,7 @@ type TabType = "users" | "locations" | "conversations";
 export default function AdminDashboardScreen() {
   const insets = useSafeAreaInsets();
   const { isDark, theme } = useTheme();
+  const { logout } = useAuth();
   const queryClient = useQueryClient();
   const colors = isDark ? Colors.dark : Colors.light;
 
@@ -554,7 +556,14 @@ export default function AdminDashboardScreen() {
           },
         ]}
       >
+        <Pressable
+          style={[styles.logoutButton, { backgroundColor: colors.backgroundSecondary }]}
+          onPress={logout}
+        >
+          <Feather name="log-out" size={20} color={colors.danger} />
+        </Pressable>
         <ThemedText style={styles.headerTitle}>Admin Dashboard</ThemedText>
+        <View style={styles.headerSpacer} />
       </View>
 
       <View style={[styles.tabBar, { backgroundColor: colors.backgroundDefault }]}>
@@ -720,12 +729,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.md,
     borderBottomWidth: 1,
   },
   headerTitle: {
     ...Typography.h3,
+    flex: 1,
+    textAlign: "center",
+  },
+  logoutButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerSpacer: {
+    width: 40,
   },
   tabBar: {
     flexDirection: "row",
