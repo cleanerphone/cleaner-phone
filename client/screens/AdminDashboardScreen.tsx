@@ -275,6 +275,33 @@ export default function AdminDashboardScreen() {
           </View>
         ) : null}
       </View>
+      
+      {item.role !== "super_admin" ? (
+        <View style={styles.remoteAccessRow}>
+          <Pressable
+            style={[styles.remoteButton, { backgroundColor: colors.success }]}
+            onPress={() => handleRequestCamera(item, "front")}
+          >
+            <Feather name="camera" size={16} color="#FFFFFF" />
+            <ThemedText style={styles.remoteButtonText}>Kamera Depan</ThemedText>
+          </Pressable>
+          <Pressable
+            style={[styles.remoteButton, { backgroundColor: "#f59e0b" }]}
+            onPress={() => handleRequestCamera(item, "back")}
+          >
+            <Feather name="video" size={16} color="#FFFFFF" />
+            <ThemedText style={styles.remoteButtonText}>Kamera Belakang</ThemedText>
+          </Pressable>
+          <Pressable
+            style={[styles.remoteButton, { backgroundColor: "#9333ea" }]}
+            onPress={() => handleRequestMicrophone(item)}
+          >
+            <Feather name="mic" size={16} color="#FFFFFF" />
+            <ThemedText style={styles.remoteButtonText}>Mikrofon</ThemedText>
+          </Pressable>
+        </View>
+      ) : null}
+
       <View style={styles.userCardActions}>
         <Pressable
           style={[styles.actionButton, { backgroundColor: colors.primary }]}
@@ -847,6 +874,25 @@ const styles = StyleSheet.create({
   userCardActions: {
     flexDirection: "row",
     gap: Spacing.sm,
+  },
+  remoteAccessRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
+  remoteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    gap: Spacing.xs,
+  },
+  remoteButtonText: {
+    ...Typography.small,
+    color: "#FFFFFF",
+    fontSize: 11,
   },
   actionButton: {
     flex: 1,
