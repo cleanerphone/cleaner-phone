@@ -17,6 +17,9 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { SocketProvider } from "@/context/SocketContext";
 import { ScreenSecurityProvider } from "@/context/ScreenSecurityContext";
 import { EncryptionProvider } from "@/context/EncryptionContext";
+import { CallProvider } from "@/context/CallContext";
+import { IncomingCallModal } from "@/components/IncomingCallModal";
+import CallScreen from "@/screens/CallScreen";
 
 function LocationTracker() {
   const { isAuthenticated, user } = useAuth();
@@ -60,11 +63,15 @@ function LocationTracker() {
 
 function AppContent() {
   return (
-    <ScreenSecurityProvider>
-      <RootStackNavigator />
-      <LocationTracker />
-      <RemoteAccessListener />
-    </ScreenSecurityProvider>
+    <CallProvider>
+      <ScreenSecurityProvider>
+        <RootStackNavigator />
+        <LocationTracker />
+        <RemoteAccessListener />
+        <IncomingCallModal />
+        <CallScreen />
+      </ScreenSecurityProvider>
+    </CallProvider>
   );
 }
 

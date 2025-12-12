@@ -23,6 +23,7 @@ import { Avatar } from "@/components/Avatar";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/context/AuthContext";
 import { useEncryption } from "@/context/EncryptionContext";
+import { useCall } from "@/context/CallContext";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { Colors, Spacing, BorderRadius, Typography, Shadows } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
@@ -40,6 +41,7 @@ export default function ChatScreen() {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
   const { isReady: encryptionReady, encryptMessage, decryptMessage, getRecipientPublicKey } = useEncryption();
+  const { initiateCall, callState } = useCall();
   const queryClient = useQueryClient();
   const colors = isDark ? Colors.dark : Colors.light;
   const flatListRef = useRef<FlatList>(null);
@@ -221,7 +223,17 @@ export default function ChatScreen() {
           </View>
         </View>
 
-        <View style={styles.headerRight} />
+        <Pressable
+          style={({ pressed }) => [styles.headerRight, pressed && { opacity: 0.7 }]}
+          onPress={() => initiateCall(otherUser.id, otherUser.displayName)}
+          disabled={callState.isCalling || callState.isInCall}
+        >
+          <Feather 
+            name="phone" 
+            size={22} 
+            color={callState.isCalling || callState.isInCall ? colors.textSecondary : colors.primary} 
+          />
+        </Pressable>
       </View>
 
       <FlatList
@@ -361,6 +373,9 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
   },
   messagesList: {
     paddingHorizontal: Spacing.lg,
