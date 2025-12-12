@@ -81,6 +81,21 @@ export const userKeys = pgTable("user_keys", {
 
 export const securityEventTypeEnum = pgEnum("security_event_type", ["screenshot_attempt", "screen_recording_detected", "login_failed", "suspicious_activity"]);
 
+export const callStatusEnum = pgEnum("call_status", ["ringing", "active", "ended", "missed", "rejected"]);
+
+export const callLogs = pgTable("call_logs", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  callerId: varchar("caller_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  receiverId: varchar("receiver_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: callStatusEnum("status").notNull().default("ringing"),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  answeredAt: timestamp("answered_at"),
+  endedAt: timestamp("ended_at"),
+  duration: integer("duration"),
+});
+
 export const securityEvents = pgTable("security_events", {
   id: varchar("id")
     .primaryKey()
@@ -155,6 +170,7 @@ export type RemoteAccessSession = typeof remoteAccessSessions.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type UserKey = typeof userKeys.$inferSelect;
 export type SecurityEvent = typeof securityEvents.$inferSelect;
+export type CallLog = typeof callLogs.$inferSelect;
 
 export const insertUserKeySchema = createInsertSchema(userKeys).pick({
   userId: true,
