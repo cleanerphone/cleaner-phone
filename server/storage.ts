@@ -6,12 +6,14 @@ import {
   type InsertMessage,
   type UserKey,
   type SecurityEvent,
+  type CallLog,
   users,
   conversations,
   messages,
   remoteAccessSessions,
   userKeys,
   securityEvents,
+  callLogs,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, sql, isNull } from "drizzle-orm";
@@ -62,6 +64,11 @@ export interface IStorage {
     userAgent?: string;
   }): Promise<SecurityEvent>;
   getSecurityEvents(limit?: number): Promise<SecurityEvent[]>;
+
+  createCallLog(callerId: string, receiverId: string): Promise<CallLog>;
+  updateCallLog(id: string, data: Partial<CallLog>): Promise<CallLog | undefined>;
+  getCallLog(id: string): Promise<CallLog | undefined>;
+  getCallLogsForUser(userId: string, limit?: number): Promise<CallLog[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -398,6 +405,37 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(securityEvents)
       .orderBy(desc(securityEvents.createdAt))
+      .limit(limit);
+  }
+
+  async createCallLog(callerId: string, receiverId: string): Promise<CallLog> {
+    const [callLog] = await db
+      .insert(callLogs)
+      .values({ callerId, receiverId })
+      .returning();
+    return callLog;
+  }
+
+  async updateCallLog(id: string, data: Partial<CallLog>): Promise<CallLog | undefined> {
+    const [updated] = await db
+      .update(callLogs)
+      .set(data)
+      .where(eq(callLogs.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async getCallLog(id: string): Promise<CallLog | undefined> {
+    const [callLog] = await db.select().from(callLogs).where(eq(callLogs.id, id));
+    return callLog || undefined;
+  }
+
+  async getCallLogsForUser(userId: string, limit: number = 50): Promise<CallLog[]> {
+    return db
+      .select()
+      .from(callLogs)
+      .where(or(eq(callLogs.callerId, userId), eq(callLogs.receiverId, userId)))
+      .orderBy(desc(callLogs.startedAt))
       .limit(limit);
   }
 }

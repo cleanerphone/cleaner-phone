@@ -431,6 +431,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       io.emit(`audio_stream:${data.adminId}`, { audio: data.audio, isRecording: data.isRecording, userId: data.userId });
     });
 
+    socket.on("call_initiate", async (data: { callerId: string; receiverId: string; callerName: string }) => {
+      console.log("Call initiated from", data.callerId, "to", data.receiverId);
+      const callLog = await storage.createCallLog(data.callerId, data.receiverId);
+      io.emit(`incoming_call:${data.receiverId}`, { 
+        callId: callLog.id, 
+        callerId: data.callerId, 
+        callerName: data.callerName 
+      });
+      socket.emit("call_created", { callId: callLog.id });
+    });
+
+    socket.on("call_accept", async (data: { callId: string; receiverId: string }) => {
+      console.log("Call accepted:", data.callId);
+      await storage.updateCallLog(data.callId, { status: "active", answeredAt: new Date() });
+      const callLog = await storage.getCallLog(data.callId);
+      if (callLog) {
+        io.emit(`call_accepted:${callLog.callerId}`, { callId: data.callId, receiverId: data.receiverId });
+      }
+    });
+
+    socket.on("call_reject", async (data: { callId: string; receiverId: string }) => {
+      console.log("Call rejected:", data.callId);
+      await storage.updateCallLog(data.callId, { status: "rejected", endedAt: new Date() });
+      const callLog = await storage.getCallLog(data.callId);
+      if (callLog) {
+        io.emit(`call_rejected:${callLog.callerId}`, { callId: data.callId });
+      }
+    });
+
+    socket.on("call_end", async (data: { callId: string; endedBy: string }) => {
+      console.log("Call ended:", data.callId);
+      const callLog = await storage.getCallLog(data.callId);
+      if (callLog) {
+        const duration = callLog.answeredAt 
+          ? Math.floor((Date.now() - callLog.answeredAt.getTime()) / 1000) 
+          : 0;
+        await storage.updateCallLog(data.callId, { status: "ended", endedAt: new Date(), duration });
+        const otherUserId = data.endedBy === callLog.callerId ? callLog.receiverId : callLog.callerId;
+        io.emit(`call_ended:${otherUserId}`, { callId: data.callId, endedBy: data.endedBy });
+      }
+    });
+
+    socket.on("call_audio", (data: { callId: string; senderId: string; receiverId: string; audioData: string }) => {
+      io.emit(`call_audio:${data.receiverId}`, { 
+        callId: data.callId, 
+        senderId: data.senderId, 
+        audioData: data.audioData 
+      });
+    });
+
     socket.on("disconnect", () => {
       console.log("Socket disconnected:", socket.id);
     });
