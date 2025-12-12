@@ -24,7 +24,7 @@ function formatDuration(seconds: number): string {
 
 export default function CallScreen() {
   const insets = useSafeAreaInsets();
-  const { callState, endCall } = useCall();
+  const { callState, endCall, toggleMute } = useCall();
   const { isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
 
@@ -78,8 +78,18 @@ export default function CallScreen() {
 
       <View style={[styles.controlsContainer, { paddingBottom: insets.bottom + Spacing["2xl"] }]}>
         <View style={styles.controls}>
-          <Pressable style={[styles.controlButton, { backgroundColor: colors.backgroundSecondary }]}>
-            <Feather name="mic-off" size={24} color={colors.text} />
+          <Pressable 
+            style={[
+              styles.controlButton, 
+              { backgroundColor: callState.isMuted ? colors.danger : colors.backgroundSecondary }
+            ]}
+            onPress={toggleMute}
+          >
+            <Feather 
+              name={callState.isMuted ? "mic-off" : "mic"} 
+              size={24} 
+              color={callState.isMuted ? "#FFFFFF" : colors.text} 
+            />
           </Pressable>
 
           <Pressable style={[styles.endButton]} onPress={endCall}>

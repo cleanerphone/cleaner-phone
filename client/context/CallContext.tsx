@@ -12,6 +12,7 @@ type CallState = {
   remoteUserId: string | null;
   remoteUserName: string | null;
   callDuration: number;
+  isMuted: boolean;
 };
 
 type CallContextType = {
@@ -20,6 +21,7 @@ type CallContextType = {
   acceptCall: () => void;
   rejectCall: () => void;
   endCall: () => void;
+  toggleMute: () => void;
 };
 
 const initialCallState: CallState = {
@@ -30,6 +32,7 @@ const initialCallState: CallState = {
   remoteUserId: null,
   remoteUserName: null,
   callDuration: 0,
+  isMuted: false,
 };
 
 const CallContext = createContext<CallContextType | null>(null);
@@ -40,31 +43,59 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const [callState, setCallState] = useState<CallState>(initialCallState);
   
   const recordingRef = useRef<Audio.Recording | null>(null);
-  const audioIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const callIdRef = useRef<string | null>(null);
+  const remoteUserIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    callIdRef.current = callState.callId;
+    remoteUserIdRef.current = callState.remoteUserId;
+  }, [callState.callId, callState.remoteUserId]);
 
   const stopAudioStreaming = useCallback(async () => {
-    if (audioIntervalRef.current) {
-      clearInterval(audioIntervalRef.current);
-      audioIntervalRef.current = null;
-    }
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
       durationIntervalRef.current = null;
     }
     if (recordingRef.current) {
       try {
-        await recordingRef.current.stopAndUnloadAsync();
+        const status = await recordingRef.current.getStatusAsync();
+        if (status.isRecording) {
+          await recordingRef.current.stopAndUnloadAsync();
+        }
       } catch (e) {
-        console.error("Error stopping recording:", e);
+        console.log("Recording cleanup:", e);
       }
       recordingRef.current = null;
     }
+    if (soundRef.current) {
+      try {
+        await soundRef.current.unloadAsync();
+      } catch (e) {
+        console.log("Sound cleanup:", e);
+      }
+      soundRef.current = null;
+    }
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+      });
+    } catch (e) {
+      console.log("Audio mode reset:", e);
+    }
   }, []);
 
-  const startAudioStreaming = useCallback(async () => {
+  const startAudioStreaming = useCallback(async (activeCallId: string, activeRemoteUserId: string) => {
     if (Platform.OS === "web") {
-      console.log("Audio streaming not available on web");
+      console.log("Audio streaming limited on web - call signaling active");
+      durationIntervalRef.current = setInterval(() => {
+        setCallState((prev) => ({
+          ...prev,
+          callDuration: prev.callDuration + 1,
+        }));
+      }, 1000);
       return;
     }
 
@@ -78,23 +109,47 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
       });
 
       const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await recording.prepareToRecordAsync({
+        android: {
+          extension: ".m4a",
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 44100,
+          numberOfChannels: 1,
+          bitRate: 128000,
+        },
+        ios: {
+          extension: ".m4a",
+          audioQuality: Audio.IOSAudioQuality.HIGH,
+          sampleRate: 44100,
+          numberOfChannels: 1,
+          bitRate: 128000,
+          linearPCMBitDepth: 16,
+          linearPCMIsBigEndian: false,
+          linearPCMIsFloat: false,
+        },
+        web: {
+          mimeType: "audio/webm",
+          bitsPerSecond: 128000,
+        },
+      });
       await recording.startAsync();
       recordingRef.current = recording;
 
-      audioIntervalRef.current = setInterval(() => {
-        if (callState.callId && callState.remoteUserId && socket) {
-          socket.emit("call_audio", {
-            callId: callState.callId,
-            senderId: user?.id,
-            receiverId: callState.remoteUserId,
-            audioData: "streaming",
-          });
-        }
-      }, 500);
+      if (socket) {
+        socket.emit("call_audio_active", {
+          callId: activeCallId,
+          senderId: user?.id,
+          receiverId: activeRemoteUserId,
+          isActive: true,
+        });
+      }
 
       durationIntervalRef.current = setInterval(() => {
         setCallState((prev) => ({
@@ -104,8 +159,14 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       }, 1000);
     } catch (error) {
       console.error("Error starting audio streaming:", error);
+      durationIntervalRef.current = setInterval(() => {
+        setCallState((prev) => ({
+          ...prev,
+          callDuration: prev.callDuration + 1,
+        }));
+      }, 1000);
     }
-  }, [callState.callId, callState.remoteUserId, socket, user?.id]);
+  }, [socket, user?.id]);
 
   const initiateCall = useCallback((receiverId: string, receiverName: string) => {
     if (!isConnected || !user) {
@@ -128,10 +189,13 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   }, [isConnected, user, emit]);
 
   const acceptCall = useCallback(async () => {
-    if (!callState.callId) return;
+    const currentCallId = callIdRef.current;
+    const currentRemoteUserId = remoteUserIdRef.current;
+    
+    if (!currentCallId) return;
 
     emit("call_accept", {
-      callId: callState.callId,
+      callId: currentCallId,
       receiverId: user?.id,
     });
 
@@ -142,31 +206,54 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       callDuration: 0,
     }));
 
-    await startAudioStreaming();
-  }, [callState.callId, emit, user?.id, startAudioStreaming]);
+    if (currentRemoteUserId) {
+      await startAudioStreaming(currentCallId, currentRemoteUserId);
+    }
+  }, [emit, user?.id, startAudioStreaming]);
 
   const rejectCall = useCallback(() => {
-    if (!callState.callId) return;
+    const currentCallId = callIdRef.current;
+    if (!currentCallId) return;
 
     emit("call_reject", {
-      callId: callState.callId,
+      callId: currentCallId,
       receiverId: user?.id,
     });
 
     setCallState(initialCallState);
-  }, [callState.callId, emit, user?.id]);
+  }, [emit, user?.id]);
 
   const endCall = useCallback(async () => {
-    if (!callState.callId) return;
+    const currentCallId = callIdRef.current;
+    if (!currentCallId) return;
 
     emit("call_end", {
-      callId: callState.callId,
+      callId: currentCallId,
       endedBy: user?.id,
     });
 
     await stopAudioStreaming();
     setCallState(initialCallState);
-  }, [callState.callId, emit, user?.id, stopAudioStreaming]);
+  }, [emit, user?.id, stopAudioStreaming]);
+
+  const toggleMute = useCallback(async () => {
+    if (recordingRef.current) {
+      try {
+        const status = await recordingRef.current.getStatusAsync();
+        if (status.isRecording) {
+          await recordingRef.current.pauseAsync();
+          setCallState((prev) => ({ ...prev, isMuted: true }));
+        } else {
+          await recordingRef.current.startAsync();
+          setCallState((prev) => ({ ...prev, isMuted: false }));
+        }
+      } catch (e) {
+        console.log("Mute toggle error:", e);
+      }
+    } else {
+      setCallState((prev) => ({ ...prev, isMuted: !prev.isMuted }));
+    }
+  }, []);
 
   useEffect(() => {
     if (!socket || !user) return;
@@ -182,6 +269,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     };
 
     const handleCallAccepted = async (data: { callId: string; receiverId: string }) => {
+      const remoteId = remoteUserIdRef.current;
+      
       setCallState((prev) => ({
         ...prev,
         callId: data.callId,
@@ -189,17 +278,20 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         isInCall: true,
         callDuration: 0,
       }));
-      await startAudioStreaming();
+      
+      if (remoteId) {
+        await startAudioStreaming(data.callId, remoteId);
+      }
     };
 
-    const handleCallRejected = () => {
+    const handleCallRejected = async () => {
       Alert.alert("Call Rejected", "The other user rejected your call");
-      stopAudioStreaming();
+      await stopAudioStreaming();
       setCallState(initialCallState);
     };
 
-    const handleCallEnded = () => {
-      stopAudioStreaming();
+    const handleCallEnded = async () => {
+      await stopAudioStreaming();
       setCallState(initialCallState);
     };
 
@@ -225,6 +317,12 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     };
   }, [socket, user, startAudioStreaming, stopAudioStreaming]);
 
+  useEffect(() => {
+    return () => {
+      stopAudioStreaming();
+    };
+  }, [stopAudioStreaming]);
+
   return (
     <CallContext.Provider
       value={{
@@ -233,6 +331,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         acceptCall,
         rejectCall,
         endCall,
+        toggleMute,
       }}
     >
       {children}
