@@ -385,9 +385,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   const io = new SocketIOServer(httpServer, {
     cors: {
-      origin: process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "*",
+      origin: "*",
+      methods: ["GET", "POST"],
       credentials: true,
     },
+    transports: ["websocket", "polling"],
   });
 
   io.on("connection", (socket) => {
