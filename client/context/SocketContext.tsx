@@ -37,18 +37,30 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
 
     const apiUrl = getApiUrl();
+    console.log("Socket connecting to:", apiUrl);
+    
     const newSocket = io(apiUrl, {
-      transports: ["websocket", "polling"],
+      transports: ["polling", "websocket"],
       autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      timeout: 20000,
     });
 
     newSocket.on("connect", () => {
+      console.log("Socket connected successfully:", newSocket.id);
       setIsConnected(true);
       newSocket.emit("user_connected", { userId: user.id });
     });
 
-    newSocket.on("disconnect", () => {
+    newSocket.on("disconnect", (reason) => {
+      console.log("Socket disconnected:", reason);
       setIsConnected(false);
+    });
+
+    newSocket.on("connect_error", (error) => {
+      console.log("Socket connection error:", error.message);
     });
 
     socketRef.current = newSocket;
