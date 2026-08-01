@@ -3,12 +3,8 @@ builder = "nixpacks"
 buildCommand = "npm run server:build"
 
 [deploy]
-startCommand = "npm run railway:start"
+startCommand = "npx drizzle-kit push --force && npm run server:prod"
 healthcheckPath = "/api/health"
-healthcheckTimeout = 60
+healthcheckTimeout = 120
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
-
-[environments.production.variables]
-NODE_ENV = "production"
-PORT = "5000"
