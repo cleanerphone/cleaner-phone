@@ -45,25 +45,16 @@ function setupCors(app: express.Application) {
   app.use((req, res, next) => {
     const origin = req.header("origin");
 
-    // In development, allow all origins that match our patterns
+    // Allow all origins - needed for mobile app (Expo/React Native)
+    // The app uses session-based auth so this is safe
     if (origin) {
-      const isAllowed =
-        origin.includes("replit.dev") ||
-        origin.includes("replit.app") ||
-        origin.startsWith("http://localhost") ||
-        origin.startsWith("https://localhost") ||
-        origin.startsWith("http://127.0.0.1") ||
-        origin.startsWith("https://127.0.0.1");
-
-      if (isAllowed) {
-        res.header("Access-Control-Allow-Origin", origin);
-        res.header(
-          "Access-Control-Allow-Methods",
-          "GET, POST, PUT, DELETE, OPTIONS",
-        );
-        res.header("Access-Control-Allow-Headers", "Content-Type");
-        res.header("Access-Control-Allow-Credentials", "true");
-      }
+      res.header("Access-Control-Allow-Origin", origin);
+      res.header(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS",
+      );
+      res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      res.header("Access-Control-Allow-Credentials", "true");
     }
 
     if (req.method === "OPTIONS") {

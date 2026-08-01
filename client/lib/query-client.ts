@@ -11,6 +11,13 @@ export function getApiUrl(): string {
   const isReplitHost = (host: string) => 
     host.includes(".replit.dev") || host.includes(".repl.co");
 
+  // 1. Explicit API URL override (for Railway or any custom deployment)
+  //    Set EXPO_PUBLIC_API_URL=https://your-app.railway.app in your build env
+  const explicitApiUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (explicitApiUrl) {
+    return explicitApiUrl.replace(/\/$/, ""); // strip trailing slash
+  }
+
   if (typeof window !== "undefined" && window.location) {
     const currentHost = window.location.hostname;
     const protocol = window.location.protocol;

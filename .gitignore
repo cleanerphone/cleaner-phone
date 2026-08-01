@@ -38,6 +38,18 @@ yarn-error.*
 
 app-example
 
+# Build output
+server_dist/
+static-build/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Railway
+.railway/
+
 # generated native folders
 /ios
 /android
