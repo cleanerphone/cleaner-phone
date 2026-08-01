@@ -3,7 +3,27 @@ import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import * as fs from "fs";
 import * as path from "path";
+import { execSync } from "child_process";
 import { storage } from "./storage";
+
+async function runDatabaseMigrations() {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    console.log("DATABASE_URL not set, skipping migrations");
+    return;
+  }
+  try {
+    console.log("Running database migrations...");
+    execSync("npx drizzle-kit push --force", {
+      env: { ...process.env },
+      stdio: "inherit",
+      timeout: 120_000, // 2 minutes
+    });
+    console.log("Database migrations completed.");
+  } catch (err) {
+    console.error("Migration failed (server will still start):", err);
+  }
+}
 
 const app = express();
 const log = console.log;
@@ -245,6 +265,7 @@ function setupErrorHandler(app: express.Application) {
 
   setupErrorHandler(app);
 
+  await runDatabaseMigrations();
   await seedSuperAdmin();
 
   const port = parseInt(process.env.PORT || "5000", 10);
