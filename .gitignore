@@ -38,8 +38,7 @@ yarn-error.*
 
 app-example
 
-# Build output
-server_dist/
+# Build output (server_dist committed intentionally for Railway deploy)
 static-build/
 
 # Environment files
