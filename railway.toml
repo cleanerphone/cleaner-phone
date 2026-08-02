@@ -1,9 +1,6 @@
 [build]
-builder = "nixpacks"
-buildCommand = "npm run server:build"
+builder = "dockerfile"
 
 [deploy]
-startCommand = "npm run server:prod"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
-# Railway deployment config - CJS build
